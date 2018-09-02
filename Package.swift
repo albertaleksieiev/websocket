@@ -11,7 +11,7 @@ let package = Package(
         .package(url: "https://github.com/readdle/vapor-core.git", .exact("3.4.3")),
 
         // 🔑 Hashing (BCrypt, SHA2, HMAC), encryption (AES), public-key (RSA), and random data generation.
-        .package(url: "https://github.com/albertaleksieiev/vapor-crypto.git", .exact("3.2.1")),
+        .package(url: "https://github.com/albertaleksieiev/vapor-crypto.git", .exact("3.2.2")),
 
         // 🚀 Non-blocking, event-driven HTTP for Swift built on Swift NIO.
         .package(url: "https://github.com/albertaleksieiev/http.git", .exact("3.1.3")),
