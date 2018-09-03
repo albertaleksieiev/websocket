@@ -7,7 +7,18 @@ public protocol WebSocketAdvancedDelegate: class {
     func websocketHttpUpgrade(socket: StarscreamWebSocket, request: String)
     func websocketHttpUpgrade(socket: StarscreamWebSocket, response: String)
 }
-
+public enum CloseCode : UInt16 {
+    case normal                 = 1000
+    case goingAway              = 1001
+    case protocolError          = 1002
+    case protocolUnhandledType  = 1003
+    // 1004 reserved.
+    case noStatusReceived       = 1005
+    //1006 reserved.
+    case encoding               = 1007
+    case policyViolated         = 1008
+    case messageTooBig          = 1009
+}
 public protocol WSStream {
 }
 
@@ -24,7 +35,6 @@ open class StarscreamWebSocket {
 
     public var advancedDelegate: WebSocketAdvancedDelegate?
 
-    var path = ""
     var ws: WebSocket?
     var uuid: String?
     let worker = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -35,9 +45,12 @@ open class StarscreamWebSocket {
     public var onConnect: (() -> Void)?
     public var onDisconnect: ((Error?) -> Void)?
     public var onData: ((Data) -> Void)?
-    public private(set) var isConnected: Bool = false
+    public var isConnected: Bool = false
+    public let request: URLRequest
 
     public init(request: URLRequest, protocols: [String]? = nil, stream: WSStream = FoundationStream()) {
+        self.request = request
+
         guard let url = request.url else {
             return
         }
@@ -47,6 +60,7 @@ open class StarscreamWebSocket {
         }
 
         var origin = url.absoluteString
+        var path = ""
 
         if let hostUrl = URL(string: "/", relativeTo: url) {
             origin = hostUrl.absoluteString
@@ -87,6 +101,7 @@ open class StarscreamWebSocket {
         self.ws?.onCloseCode { code in
             self.onDisconnect?(nil)
             self.advancedDelegate?.websocketDidDisconnect(socket: self, error: nil)
+            self.isConnected = false
         }
 
         self.ws?.onBinary({ ws, data in
@@ -95,8 +110,9 @@ open class StarscreamWebSocket {
         })
 
         self.ws?.onClose.always {
-            self.isConnected = true
+            self.isConnected = false
         }
+
         self.advancedDelegate?.websocketDidConnect(socket: self)
         self.onConnect?()
     }
@@ -113,14 +129,19 @@ open class StarscreamWebSocket {
     public func connect() {
         _ = self.futureWs?.do { ws in
             self.connected(ws)
+            self.isConnected = true
         }.catch { error in
             self.advancedDelegate?.websocketDidDisconnect(socket: self, error: error)
             self.onDisconnect?(error)
         }
     }
 
-    public func close() {
+    public func disconnect() {
         self.ws?.close(code: .normalClosure)
+    }
+
+    public func disconnect(_ code: CloseCode) {
+        self.ws?.close(code: WebSocketErrorCode(codeNumber: Int(code.rawValue)))
     }
 
     public func write(string: String, completion: (() -> ())?) {
