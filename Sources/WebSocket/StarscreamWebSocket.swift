@@ -28,7 +28,7 @@ public class FoundationStream: WSStream {
 }
 
 // wrapper around Vapor/Websocket into StarscreamWebSocket(https://github.com/daltoniam/Starscream)
-open class StarscreamWebSocket {
+open class StarscreamWebSocket: NSObject {
     public class WSResponse { // Stub
 
     }
@@ -93,6 +93,15 @@ open class StarscreamWebSocket {
         self.ws = ws
         self.isConnected = true
 
+        var response = "HTTP/1.1 101 Switching Protocols\r\n"
+        if let upgradeResponse = ws.upgradeResponse {
+            response += upgradeResponse
+                    .headers
+                    .map {"\($0.name): \($0.value)"}
+                    .joined(separator: "\r\n")
+        }
+        self.advancedDelegate?.websocketHttpUpgrade(socket: self, response: response)
+        
         self.ws?.onText { ws, text in
             self.onText?(text)
             self.advancedDelegate?.websocketDidReceiveMessage(socket: self, text: text, response: StarscreamWebSocket.WSResponse())
