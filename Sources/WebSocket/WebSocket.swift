@@ -46,6 +46,8 @@ public final class WebSocket: BasicWorker {
         return channel.eventLoop
     }
 
+    public var upgradeResponse: HTTPResponseHead?
+
     /// Outbound `WebSocketEventHandler`.
     private let channel: Channel
     
