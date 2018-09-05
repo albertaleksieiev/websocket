@@ -102,6 +102,7 @@ private final class WebSocketClientUpgrader: HTTPClientProtocolUpgrader {
         return ctx.channel.pipeline.addHandlers(WebSocketFrameEncoder(), WebSocketFrameDecoder(maxFrameSize: maxFrameSize), first: false).then {
             return ctx.channel.pipeline.add(webSocket: webSocket)
         }.map(to: WebSocket.self) {
+            webSocket.upgradeResponse = upgradeResponse
             return webSocket
         }
     }
