@@ -1,4 +1,4 @@
-import WebSocket
+import VaporWebSocket
 import XCTest
 
 class WebSocketTests: XCTestCase {

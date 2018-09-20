@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "VaporWebSocket",
     products: [
-        .library(name: "VaporWebSocket", targets: ["VaporWebSocket"]),
+        .library(name: "VaporWebSocket", type: .dynamic, targets: ["VaporWebSocket"]),
     ],
     dependencies: [
         // 🌎 Utility package containing tools for byte manipulation, Codable, OS APIs, and debugging.
@@ -20,7 +20,8 @@ let package = Package(
         .package(url: "https://github.com/readdle/swift-nio.git", .upToNextMajor(from: "1.9.4")),
 
         // Bindings to OpenSSL-compatible libraries for TLS support in SwiftNIO
-        .package(url: "https://github.com/readdle/swift-nio-ssl.git", .upToNextMajor(from: "1.2.3"))
+        .package(url: "https://github.com/readdle/swift-nio-ssl.git", .upToNextMajor(from: "1.2.3")),
+        .package(url: "https://git.readdle.com/android/swift-openssl-prebuilt", .exact("0.0.2"))
     ],
     targets: [
         .target(
