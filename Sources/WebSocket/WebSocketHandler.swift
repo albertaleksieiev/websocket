@@ -1,3 +1,4 @@
+import Logcat
 extension ChannelPipeline {
     /// Adds the supplied `WebSocket` to this `ChannelPipeline`.
     internal func add(webSocket: WebSocket) -> Future<Void> {
@@ -19,6 +20,11 @@ private final class WebSocketHandler: ChannelInboundHandler {
     /// `WebSocket` to handle the incoming events.
     private var webSocket: WebSocket
 
+    var textBuffer: String?
+    var dataBuffer: Data?
+    var prevDataType: WebSocketOpcode?
+    var printDebug = true
+
     /// Creates a new `WebSocketEventDecoder`
     init(webSocket: WebSocket) {
         self.webSocket = webSocket
@@ -27,6 +33,69 @@ private final class WebSocketHandler: ChannelInboundHandler {
     /// See `ChannelInboundHandler`.
     func channelActive(ctx: ChannelHandlerContext) {
         // connected
+    }
+    func isValidJson(_ jsonString: String) -> Bool{
+        if let jsonDataToVerify = jsonString.data(using: String.Encoding.utf8)
+        {
+            do {
+                _ = try JSONSerialization.jsonObject(with: jsonDataToVerify)
+                return true
+            } catch {
+                return false
+            }
+        }
+
+        return false
+    }
+
+    func printResponse(_ str: String) {
+        if !printDebug {
+            return
+        }
+
+        if str.count < 30 {
+            android_log(ANDROID_LOG_DEBUG, "LIJSON", "len = \(str.count), str = `\(str)`")
+        } else {
+            let text = "len = \(str.count), str = `\(str.prefix(30))...\(str.suffix(min(str.count - 30, 30)))`"
+            android_log(ANDROID_LOG_DEBUG, "LIJSON", text)
+        }
+    }
+
+    private func resetFrame() {
+        textBuffer = nil
+        prevDataType = nil
+        dataBuffer = nil
+    }
+
+    private func processResponse(_ frame: WebSocketFrame) -> Bool {
+        guard let dataType = prevDataType else {
+            return false
+        }
+
+        if frame.fin {
+            switch frame.opcode {
+            case .text, .binary, // only for 1 len(where fin is begin)
+                 .continuation: // only for > 1 len(where fin is begin)
+                if dataType == .binary {
+                    if let data = dataBuffer {
+                        printResponse("[FINB] \(String(data: data, encoding: String.Encoding.utf8) ?? "-empty-)")")
+                        printResponse("[FINB] test \(isValidJson(String(data: data, encoding: String.Encoding.utf8) ?? "" ))")
+                        webSocket.onBinaryCallback(webSocket, data)
+                    }
+                } else if dataType == .text {
+                    if let text = textBuffer {
+                        printResponse("[FINT] \(text)")
+                        printResponse("[FINT] test \(isValidJson(text))")
+                        webSocket.onTextCallback(webSocket, text)
+                    }
+                }
+                resetFrame()
+                return true
+            default:
+                break
+            }
+        }
+        return false
     }
 
     /// See `ChannelInboundHandler`.
@@ -38,16 +107,38 @@ private final class WebSocketHandler: ChannelInboundHandler {
         case .unknownControl, .unknownNonControl: closeOnError(ctx: ctx)
         case .text:
             var data = frame.unmaskedData
-            let text = data.readString(length: data.readableBytes) ?? ""
-            webSocket.onTextCallback(webSocket, text)
+            self.textBuffer = data.readString(length: data.readableBytes) ?? ""
+            prevDataType = .text
+
+            printResponse("[T] \(self.textBuffer)")
         case .binary:
             var data = frame.unmaskedData
-            let binary = data.readData(length: data.readableBytes) ?? Data()
-            webSocket.onBinaryCallback(webSocket, binary)
+            self.dataBuffer = data.readData(length: data.readableBytes) ?? Data()
+            prevDataType = .binary
+
+            printResponse("[B] \(String(data: self.dataBuffer ?? Data(), encoding: String.Encoding.utf8) ?? "")")
+        case .continuation:
+            guard let dataType = prevDataType else {
+                return
+            }
+
+            if dataType == .binary {
+                var data = frame.unmaskedData
+                self.dataBuffer?.append(data.readData(length: data.readableBytes) ?? Data())
+
+                printResponse("[CB] \(String(data: self.dataBuffer ?? Data(), encoding: String.Encoding.utf8) ?? "")")
+            } else if dataType == .text {
+                var data = frame.unmaskedData
+                self.textBuffer?.append(data.readString(length: data.readableBytes) ?? "")
+
+                printResponse("[CT] \(self.textBuffer ?? "-empty-")")
+            }
+
         default:
             // We ignore all other frames.
             break
         }
+        processResponse(frame)
     }
 
     /// See `ChannelInboundHandler`.
