@@ -67,15 +67,15 @@ private final class WebSocketHandler: ChannelInboundHandler {
         dataBuffer = nil
     }
 
-    private func processResponse(_ frame: WebSocketFrame) -> Bool {
+    private func processResponse(_ frame: WebSocketFrame) {
         guard let dataType = prevDataType else {
-            return false
+            return
         }
 
         if frame.fin {
             switch frame.opcode {
-            case .text, .binary, // only for 1 len(where fin is begin)
-                 .continuation: // only for > 1 len(where fin is begin)
+            case .text, .binary, // only for 1 len(where begin is fin)
+                 .continuation: // only for > 1 len(where latest is fin)
                 if dataType == .binary {
                     if let data = dataBuffer {
                         printResponse("[FINB] \(String(data: data, encoding: String.Encoding.utf8) ?? "-empty-)")")
@@ -90,28 +90,45 @@ private final class WebSocketHandler: ChannelInboundHandler {
                     }
                 }
                 resetFrame()
-                return true
+                return
             default:
                 break
             }
         }
-        return false
     }
 
     /// See `ChannelInboundHandler`.
     func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         var frame = self.unwrapInboundIn(data)
+        let containsPrevFrame = prevDataType != nil
+
         switch frame.opcode {
         case .connectionClose: receivedClose(ctx: ctx, frame: frame)
-        case .ping: pong(ctx: ctx, frame: frame)
+        case .ping:
+            if !frame.fin {
+                closeOnError(ctx: ctx) // control frames can't be fragmented it should be final
+                return
+            } else {
+                pong(ctx: ctx, frame: frame)
+            }
         case .unknownControl, .unknownNonControl: closeOnError(ctx: ctx)
         case .text:
+            if containsPrevFrame {
+                closeOnError(ctx: ctx) // second and beyond of fragment message must be a continue frame
+                return
+            }
+
             var data = frame.unmaskedData
             self.textBuffer = data.readString(length: data.readableBytes) ?? ""
             prevDataType = .text
 
             printResponse("[T] \(self.textBuffer)")
         case .binary:
+            if containsPrevFrame {
+                closeOnError(ctx: ctx) // second and beyond of fragment message must be a continue frame
+                return
+            }
+
             var data = frame.unmaskedData
             self.dataBuffer = data.readData(length: data.readableBytes) ?? Data()
             prevDataType = .binary
@@ -119,6 +136,7 @@ private final class WebSocketHandler: ChannelInboundHandler {
             printResponse("[B] \(String(data: self.dataBuffer ?? Data(), encoding: String.Encoding.utf8) ?? "")")
         case .continuation:
             guard let dataType = prevDataType else {
+                closeOnError(ctx: ctx) // first frame can't be a continue frame
                 return
             }
 
