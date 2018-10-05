@@ -108,9 +108,7 @@ open class StarscreamWebSocket: NSObject {
         }
 
         self.ws?.onCloseCode { code in
-            self.onDisconnect?(nil)
-            self.advancedDelegate?.websocketDidDisconnect(socket: self, error: nil)
-            self.isConnected = false
+            self.handleClose()
         }
 
         self.ws?.onBinary({ ws, data in
@@ -119,13 +117,22 @@ open class StarscreamWebSocket: NSObject {
         })
 
         self.ws?.onClose.always {
-            self.isConnected = false
+            self.handleClose()
         }
 
         self.advancedDelegate?.websocketDidConnect(socket: self)
         self.onConnect?()
     }
 
+    public func handleClose() {
+        if !isConnected { // Already closed in ` elf.ws?.onCloseCode { code in`
+            return
+        }
+        isConnected = false
+
+        onDisconnect?(nil)
+        advancedDelegate?.websocketDidDisconnect(socket: self, error: nil)
+    }
 
     public func write(string: String) {
         self.ws?.send(string)
