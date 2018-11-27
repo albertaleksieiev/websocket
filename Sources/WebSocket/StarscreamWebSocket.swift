@@ -132,6 +132,14 @@ open class StarscreamWebSocket: NSObject {
 
         onDisconnect?(nil)
         advancedDelegate?.websocketDidDisconnect(socket: self, error: nil)
+        worker.shutdownGracefully(queue: DispatchQueue.global()) { error in
+            if let error = error {
+                NSLog("StarscreamWebSocket worker shutdown error: \(error)")
+            }
+            else {
+                NSLog("StarscreamWebSocket worker shutdown successfully")
+            }
+        }
     }
 
     public func write(string: String) {
