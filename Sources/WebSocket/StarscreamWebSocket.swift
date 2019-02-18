@@ -160,7 +160,7 @@ open class StarscreamWebSocket: NSObject {
     }
 
     public func disconnect() {
-        self.ws?.close(code: .normalClosure)
+        self.ws?.close() // force close
     }
 
     public func disconnect(_ code: CloseCode) {
