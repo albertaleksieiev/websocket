@@ -131,6 +131,10 @@ open class StarscreamWebSocket: NSObject {
 
         onDisconnect?(nil)
         advancedDelegate?.websocketDidDisconnect(socket: self, error: nil)
+        shutdownWorker()
+    }
+
+    private func shutdownWorker() {
         worker.shutdownGracefully(queue: DispatchQueue.global()) { error in
             if let error = error {
                 NSLog("StarscreamWebSocket worker shutdown error: \(error)")
@@ -156,6 +160,18 @@ open class StarscreamWebSocket: NSObject {
         }.catch { error in
             self.advancedDelegate?.websocketDidDisconnect(socket: self, error: error)
             self.onDisconnect?(error)
+        }
+
+
+        // Shutdown worker after 1 min if it's not connected already
+        DispatchQueue.global().asyncAfter(deadline: .now() + 60) { [weak self] in
+            guard let strongSelf = self else {
+                return
+            }
+
+            if !strongSelf.isConnected {
+                strongSelf.shutdownWorker()
+            }
         }
     }
 
