@@ -21,7 +21,7 @@ let package = Package(
 
         // Bindings to OpenSSL-compatible libraries for TLS support in SwiftNIO
         .package(url: "https://github.com/readdle/swift-nio-ssl.git", .upToNextMajor(from: "1.2.3")),
-        .package(url: "https://git.readdle.com/android/swift-openssl-prebuilt", .exact("0.0.2"))
+        .package(url: "https://github.com/readdle/swift-openssl-prebuilt.git", .exact("0.0.2"))
     ],
     targets: [
         .target(
