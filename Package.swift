@@ -1,4 +1,4 @@
-// swift-tools-version:4.0
+// swift-tools-version:5.0
 import PackageDescription
 
 let package = Package(
@@ -21,7 +21,7 @@ let package = Package(
 
         // Bindings to OpenSSL-compatible libraries for TLS support in SwiftNIO
         .package(url: "https://github.com/readdle/swift-nio-ssl.git", .upToNextMajor(from: "1.2.3")),
-        .package(url: "https://github.com/readdle/swift-openssl-prebuilt.git", .exact("0.0.2"))
+        .package(url: "https://github.com/readdle/swift-openssl-prebuilt.git", .exact("0.0.3"))
     ],
     targets: [
         .target(
@@ -30,5 +30,7 @@ let package = Package(
                 path: "Sources/WebSocket"
         ),
         .testTarget(name: "WebSocketTests", dependencies: ["VaporWebSocket"]),
-    ]
+    ],
+    swiftLanguageVersions: [.v5],
+    cLanguageStandard: .c11
 )
