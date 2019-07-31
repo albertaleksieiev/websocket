@@ -77,7 +77,8 @@ open class StarscreamWebSocket: NSObject {
             headers = HTTPHeaders(dictionaryLiteral: (("Authorization", authKey)))
         }
 
-        let scheme: HTTPScheme = url.absoluteString.hasPrefix("wss") ? .wss(serverHostname: url.host /*set SNI implicitly*/) : .ws
+        let tlsConfiguration = TLSConfiguration.forClient(certificateVerification: .none)
+        let scheme: HTTPScheme = url.absoluteString.hasPrefix("wss") ? .customHTTPS(tlsConfiguration) : .ws
         futureWs = HTTPClient.webSocket(
                 scheme: scheme,
                 hostname: host,
