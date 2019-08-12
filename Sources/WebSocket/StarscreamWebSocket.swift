@@ -27,6 +27,18 @@ public class FoundationStream: WSStream {
     }
 }
 
+private func CACertPath() -> String {
+    #if os(Android)
+    // We use the same environment variable that URLSession use in Foundation
+    guard let utf8FilePath = getenv("URLSessionCertificateAuthorityInfoFile") else {
+        return "/data/local/tmp/cacert.pem" // we use temp folder for testing purpose
+    }
+    return String(utf8String: utf8FilePath)!
+    #else
+        fatalError("Not supported! If you wanna use StarscreamWebSocket on other platforms implement CACertPath")
+    #endif
+}
+
 // wrapper around Vapor/Websocket into StarscreamWebSocket(https://github.com/daltoniam/Starscream)
 open class StarscreamWebSocket: NSObject {
     public class WSResponse { // Stub
@@ -77,7 +89,7 @@ open class StarscreamWebSocket: NSObject {
             headers = HTTPHeaders(dictionaryLiteral: (("Authorization", authKey)))
         }
 
-        let tlsConfiguration = TLSConfiguration.forClient(certificateVerification: .none)
+        let tlsConfiguration = TLSConfiguration.forClient(trustRoots: .file(CACertPath()))
         let scheme: HTTPScheme = url.absoluteString.hasPrefix("wss") ? .customHTTPS(tlsConfiguration) : .ws
         futureWs = HTTPClient.webSocket(
                 scheme: scheme,
