@@ -2,6 +2,13 @@ import VaporWebSocket
 import XCTest
 
 class WebSocketTests: XCTestCase {
+
+    #if os(Android)
+    private let tlsConfiguration: TLSConfiguration = .forClient(trustRoots: .file("/data/local/tmp/cacert.pem"))
+    #else 
+    private let tlsConfiguration: TLSConfiguration = .forClient()
+    #endif
+
     func testClient() throws {
         // ws://echo.websocket.org
         let worker = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -24,7 +31,7 @@ class WebSocketTests: XCTestCase {
     func testClientTLS() throws {
         // ws://echo.websocket.org
         let worker = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        let webSocket = try HTTPClient.webSocket(scheme: .wss, hostname: "echo.websocket.org", on: worker).wait()
+        let webSocket = try HTTPClient.webSocket(scheme: .customHTTPS(tlsConfiguration), hostname: "echo.websocket.org", on: worker).wait()
 
         let promise = worker.eventLoop.newPromise(String.self)
         webSocket.onText { ws, text in
