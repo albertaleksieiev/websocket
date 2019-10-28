@@ -22,7 +22,7 @@ public enum CloseCode : UInt16 {
 public protocol WSStream {
 }
 
-public class FoundationStream: WSStream {
+open class FoundationStream: WSStream {
     public init() {
     }
 }
