@@ -25,6 +25,9 @@ public protocol WSStream {
 open class FoundationStream: WSStream {
     public init() {
     }
+
+    open func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
+    }
 }
 
 private func CACertPath() -> String {
